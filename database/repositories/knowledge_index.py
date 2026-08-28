@@ -49,6 +49,32 @@ class KnowledgeIndexRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def bulk_create(
+        session: AsyncSession,
+        rows: list[dict],
+    ) -> int:
+        """Insert many knowledge rows, skipping ones whose message_id already
+        exists. Returns the number of newly inserted rows."""
+        new_rows = []
+        for r in rows:
+            existing = await KnowledgeIndexRepository.get_by_message_id(
+                session, r["message_id"]
+            )
+            if not existing:
+                new_rows.append(
+                    KnowledgeChannelMessage(
+                        channel_id=r["channel_id"],
+                        message_id=r["message_id"],
+                        author_id=r["author_id"],
+                        content=r["content"],
+                    )
+                )
+        if new_rows:
+            session.add_all(new_rows)
+            await session.commit()
+        return len(new_rows)
+
+    @staticmethod
     async def delete_by_message_id(session: AsyncSession, message_id: int) -> bool:
         result = await session.execute(
             sa_delete(KnowledgeChannelMessage).where(

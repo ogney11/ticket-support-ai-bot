@@ -19,6 +19,20 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+async def _run_backfill():
+    from knowledge.backfill import backfill_channels
+
+    try:
+        summary = await backfill_channels(
+            bot,
+            channel_ids=Config.KNOWLEDGE_BACKFILL_CHANNELS or None,
+            limit=Config.KNOWLEDGE_BACKFILL_LIMIT,
+        )
+        logger.info(summary)
+    except Exception as e:
+        logger.error(f"Backfill failed: {e}", exc_info=True)
+
+
 @bot.event
 async def on_ready():
     logger.info(f"Logged in as {bot.user} (id: {bot.user.id})")
@@ -28,6 +42,8 @@ async def on_ready():
         logger.info("Slash commands synced")
     except Exception as e:
         logger.error(f"Failed to sync slash commands: {e}")
+    if Config.KNOWLEDGE_BACKFILL:
+        asyncio.get_running_loop().create_task(_run_backfill())
 
 
 async def main():

@@ -73,6 +73,23 @@ class Config:
     # this many minutes without a staff message.
     STAFF_TIMEOUT_MINUTES = int(os.getenv("STAFF_TIMEOUT_MINUTES", "30"))
 
+    # Knowledge backfill on startup: scan existing channel history to build the
+    # knowledge base. Set false to only index new messages going forward.
+    KNOWLEDGE_BACKFILL = os.getenv("KNOWLEDGE_BACKFILL", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    # Comma-separated channels to backfill; empty = all eligible channels.
+    KNOWLEDGE_BACKFILL_CHANNELS = [
+        int(x.strip())
+        for x in os.getenv("KNOWLEDGE_BACKFILL_CHANNELS", "").split(",")
+        if x.strip()
+    ]
+    # Max messages to scan per channel during backfill.
+    KNOWLEDGE_BACKFILL_LIMIT = int(os.getenv("KNOWLEDGE_BACKFILL_LIMIT", "200"))
+
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
     @classmethod
