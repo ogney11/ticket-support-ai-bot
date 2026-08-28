@@ -11,7 +11,17 @@ load_dotenv()
 class Config:
     DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    GROQ_MODEL = os.getenv("GROQ_MODEL", "mixtral-8x7b-32768")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+    # Ordered fallback models tried in turn if the primary is unavailable,
+    # decommissioned, or the key lacks access. Comma-separated.
+    GROQ_MODEL_FALLBACKS = [
+        m.strip()
+        for m in os.getenv(
+            "GROQ_MODEL_FALLBACKS",
+            "openai/gpt-oss-120b,qwen/qwen3.8-27b,groq/compound-mini",
+        ).split(",")
+        if m.strip()
+    ]
 
     MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
     MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
