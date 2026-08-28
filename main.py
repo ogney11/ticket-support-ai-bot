@@ -23,6 +23,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     logger.info(f"Logged in as {bot.user} (id: {bot.user.id})")
     await init_db()
+    try:
+        await bot.tree.sync()
+        logger.info("Slash commands synced")
+    except Exception as e:
+        logger.error(f"Failed to sync slash commands: {e}")
 
 
 async def main():
@@ -32,8 +37,6 @@ async def main():
     await bot.add_cog(KnowledgeCommands(bot))
     try:
         async with bot:
-            if hasattr(bot, "tree"):
-                await bot.tree.sync()
             await bot.start(Config.DISCORD_TOKEN)
     finally:
         await close_db()
