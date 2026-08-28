@@ -18,12 +18,56 @@ from utils.logging import logger
 from utils.rate_limit import RateLimiter
 
 GREETING_RE = re.compile(
-    r"^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you|ty|thx)[!.\s]*$", re.I
+    r"^(hi+|hello+|hej+|hey+|yo|sup|cze|czesc|cześć|good|ok|okay|ok+|bye|"
+    r"thanks|thank you|ty|thx|dziękuj|dzieki|dziekuje|dzk|dzkuje|"
+    r"👍|👋|🙂|😊|😃|🙏|❤|💖)[!.?\s]*$",
+    re.I,
+)
+
+NOISE_RE = re.compile(
+    r"^(hi+|hello+|hej+|hey+|yo|sup|cze|czesc|cześć|good|ok|okay|ok+|bye|"
+    r"thanks|thank you|ty|thx|dziękuj|dzieki|dziekuje|dzk|dzkuje|"
+    r"👍|👋|🙂|😊|😃|🙏|❤|💖)[!.?\s]*$",
+    re.I,
+)
+
+# Explicit requests to involve a human/staff member.
+STAFF_REQUEST_RE = re.compile(
+    r"(\bstaff\b|"
+    r"\bmoderator\b|"
+    r"\bmod\b|"
+    r"\badmin\w*\b|"
+    r"\bsupport team\b|"
+    r"\bsupport agent\b|"
+    r"\bsupport\b|"
+    r"\bhuman\b|"
+    r"\bperson\b|"
+    r"\bczłowieka\b|"
+    r"\bczłowiek\b|"
+    r"\bpracownika\b|"
+    r"\bpracownik\b|"
+    r"\badministratora\b|"
+    r"\badministrator\b|"
+    r"\bmoderator\w*\b|"
+    r"\bmoderatorem\b|"
+    r"\bmoderację\b|"
+    r"\bmoderacji\b|"
+    r"\bmoderacja\b|"
+    r"\bmoderatorzy\b|"
+    r"\bzespołu wsparcia\b|"
+    r"\bzespół wsparcia\b|"
+    r"\bsupportu\b)",
+    re.I,
 )
 
 GREETING = (
     "Hello! 👋 Welcome to our support ticket. I'm the AI assistant here to help you. "
     "Please tell me what you need help with and I'll do my best to assist you."
+)
+
+NO_KNOWLEDGE_RESPONSE = (
+    "I don't have enough information to answer that yet. "
+    "Could you provide a bit more detail about your issue?"
 )
 
 
@@ -88,9 +132,51 @@ class MessageHandler(commands.Cog):
                 return
 
         if GREETING_RE.match(content):
+            await self._handle_greeting(ticket, message)
+            return
+
+        # Explicit staff request: involve a human immediately (with cooldown).
+        if STAFF_REQUEST_RE.search(content):
+            async with async_session() as session:
+                await self.escalation_manager.trigger(
+                    session,
+                    ticket.id,
+                    message.channel,
+                    message.guild,
+                    reason="User explicitly requested staff",
+                )
             return
 
         await self._handle_support(ticket, message)
+
+    async def _handle_greeting(self, ticket, message: discord.Message):
+        reply = (
+            "Hello! 😊 How can I help you today? "
+            "Tell me your issue and I'll do my best to assist."
+        )
+        try:
+            greeting_context = build_context(
+                system=(
+                    "You are a friendly Discord support assistant. The user just said "
+                    "a casual greeting. Reply briefly and warmly in the SAME language as "
+                    "the user's message, then ask how you can help. Do not mention staff. "
+                    'Reply with a JSON object: {"action":"answer","response":"..."}.'
+                ),
+                knowledge=[],
+                history=[],
+                user_message=message.content,
+            )
+            result, _ = await self.groq.generate(greeting_context)
+            if result.action in ("answer", "ask_more") and result.response:
+                reply = result.response
+        except Exception as e:
+            logger.error(f"Greeting AI failed, using fallback: {e}")
+        try:
+            sent = await message.channel.send(reply)
+            async with async_session() as session:
+                await MessageRepository.create_bot(session, ticket.id, reply, sent.id)
+        except Exception as e:
+            logger.error(f"Greeting reply failed: {e}", exc_info=True)
 
     def _is_staff(self, author, guild) -> bool:
         if not guild:
@@ -140,16 +226,6 @@ class MessageHandler(commands.Cog):
                 )
                 combined = list(db_knowledge) + list(index_knowledge)
 
-                if not combined:
-                    await self.escalation_manager.trigger(
-                        session,
-                        ticket.id,
-                        message.channel,
-                        message.guild,
-                        reason="No knowledge match",
-                    )
-                    return
-
                 context = build_context(
                     system=SYSTEM_PROMPT,
                     knowledge=combined,
@@ -168,10 +244,13 @@ class MessageHandler(commands.Cog):
             result, tokens = await self.groq.generate(context)
         except Exception as e:
             logger.error(f"Groq error: {e}", exc_info=True)
-            async with async_session() as session:
-                await self.escalation_manager.trigger(
-                    session, ticket.id, message.channel, message.guild, reason="ai_error"
+            try:
+                await message.channel.send(
+                    "Sorry, I ran into a temporary issue. Could you try again in a moment?"
                 )
+            except Exception as send_err:
+                logger.error(f"Fallback send failed: {send_err}", exc_info=True)
+            async with async_session() as session:
                 await UsageLogRepository.create(
                     session,
                     ticket_id=ticket.id,
@@ -189,7 +268,7 @@ class MessageHandler(commands.Cog):
                     ticket.id,
                     message.channel,
                     message.guild,
-                    reason="AI chose to escalate",
+                    reason=result.reason or "AI chose to escalate",
                 )
                 await UsageLogRepository.create(
                     session,
@@ -202,24 +281,26 @@ class MessageHandler(commands.Cog):
                 )
             return
 
-        if not self._validate_response(result.response):
-            async with async_session() as session:
-                await self.escalation_manager.trigger(
-                    session,
-                    ticket.id,
-                    message.channel,
-                    message.guild,
-                    reason="Unsafe response",
-                )
-                await UsageLogRepository.create(
-                    session,
-                    ticket_id=ticket.id,
-                    user_message_id=message.id,
-                    response=result.response,
-                    success=False,
-                    error="response validation failed",
-                    model=self.groq.model,
-                )
+        # "ask_more" and "answer" both send a normal reply - never ping staff.
+        if not result.response or not self._validate_response(result.response):
+            reply = result.response or NO_KNOWLEDGE_RESPONSE
+            try:
+                sent = await message.channel.send(reply)
+                async with async_session() as session:
+                    await MessageRepository.create_bot(
+                        session, ticket.id, reply, sent.id
+                    )
+                    await UsageLogRepository.create(
+                        session,
+                        ticket_id=ticket.id,
+                        user_message_id=message.id,
+                        response=reply,
+                        success=True,
+                        model=self.groq.model,
+                        tokens_used=tokens,
+                    )
+            except Exception as e:
+                logger.error(f"Sending fallback message failed: {e}", exc_info=True)
             return
 
         try:

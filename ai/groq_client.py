@@ -8,8 +8,9 @@ from utils.logging import logger
 
 
 class AIResponse(BaseModel):
-    action: str  # "answer" or "escalate"
+    action: str  # "answer", "ask_more" or "escalate"
     response: str
+    reason: str | None = None
 
 
 class GroqClient:
