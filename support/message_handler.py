@@ -6,6 +6,7 @@ from discord.ext import commands
 from ai.groq_client import GroqClient
 from ai.prompts import SYSTEM_PROMPT
 from ai.context import build_context
+from config import Config
 from database.connection import async_session
 from database.repositories.messages import MessageRepository
 from database.repositories.tickets import TicketRepository
@@ -17,6 +18,11 @@ from utils.rate_limit import RateLimiter
 
 GREETING_RE = re.compile(
     r"^(hi|hello|hey|sup|yo|ok|okay|thanks|thank you|ty|thx)[!.\s]*$", re.I
+)
+
+GREETING = (
+    "Hello! 👋 Welcome to our support ticket. I'm the AI assistant here to help you. "
+    "Please tell me what you need help with and I'll do my best to assist you."
 )
 
 
@@ -64,10 +70,35 @@ class MessageHandler(commands.Cog):
 
         await self._handle_support(ticket, message)
 
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel):
+        from .ticket_detector import TicketDetector
+
+        if not isinstance(channel, discord.TextChannel):
+            return
+        if not TicketDetector.is_ticket(channel):
+            return
+        try:
+            sent = await channel.send(GREETING)
+            async with async_session() as session:
+                ticket = await TicketRepository.create_if_missing(
+                    session,
+                    channel_id=channel.id,
+                    guild_id=channel.guild.id,
+                    creator_id=0,
+                )
+                await MessageRepository.create_bot(
+                    session, ticket.id, GREETING, sent.id
+                )
+        except Exception as e:
+            logger.error(f"Auto-greet failed in {channel.id}: {e}", exc_info=True)
+
     async def _handle_support(self, ticket, message: discord.Message):
         try:
             async with async_session() as session:
-                history = await MessageRepository.get_recent(session, ticket.id, limit=10)
+                history = await MessageRepository.get_recent(
+                    session, ticket.id, limit=Config.HISTORY_LIMIT
+                )
                 db_knowledge = await self.retriever.search_database(
                     session, message.content
                 )

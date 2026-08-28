@@ -33,11 +33,31 @@ class Config:
     ]
     TICKET_NAME_PATTERN = os.getenv("TICKET_NAME_PATTERN")
 
+    # Whitelist mode: if non-empty, ONLY these channels are indexed.
     KNOWLEDGE_CHANNEL_IDS = [
         int(x.strip())
         for x in os.getenv("KNOWLEDGE_CHANNEL_IDS", "").split(",")
         if x.strip()
     ]
+
+    # Index-all mode: when KNOWLEDGE_CHANNEL_IDS is empty and this is true,
+    # every server text channel is indexed EXCEPT those in KNOWLEDGE_BLACKLIST_IDS
+    # and the ticket channels/categories (which are never treated as knowledge).
+    KNOWLEDGE_INDEX_ALL = os.getenv("KNOWLEDGE_INDEX_ALL", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+    KNOWLEDGE_BLACKLIST_IDS = [
+        int(x.strip())
+        for x in os.getenv("KNOWLEDGE_BLACKLIST_IDS", "").split(",")
+        if x.strip()
+    ]
+
+    # How many past ticket messages to feed the model.
+    HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "15"))
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
