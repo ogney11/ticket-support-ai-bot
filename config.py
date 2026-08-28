@@ -59,6 +59,20 @@ class Config:
     # How many past ticket messages to feed the model.
     HISTORY_LIMIT = int(os.getenv("HISTORY_LIMIT", "15"))
 
+    # AI moderation of knowledge indexing: run every candidate message through
+    # the model to decide if it is useful, reusable knowledge before storing it.
+    KNOWLEDGE_AI_FILTER = os.getenv("KNOWLEDGE_AI_FILTER", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+    # Staff handover: when a member with SUPPORT_ROLE_ID writes in the ticket,
+    # the bot stops answering. It resumes when the bot is @mentioned, or after
+    # this many minutes without a staff message.
+    STAFF_TIMEOUT_MINUTES = int(os.getenv("STAFF_TIMEOUT_MINUTES", "30"))
+
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
     @classmethod

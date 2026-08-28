@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     closed_at  DATETIME     NULL,
     is_open    BOOLEAN      NOT NULL DEFAULT TRUE,
+    bot_paused BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_staff_message_at DATETIME NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_tickets_channel (channel_id),
     KEY idx_tickets_guild (guild_id)

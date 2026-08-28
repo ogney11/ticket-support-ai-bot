@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import text
 from database.models import Base
 from config import Config
 from utils.logging import logger
@@ -27,6 +28,13 @@ async def init_db():
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(
+                text(
+                    "ALTER TABLE tickets "
+                    "ADD COLUMN IF NOT EXISTS bot_paused BOOLEAN NOT NULL DEFAULT FALSE, "
+                    "ADD COLUMN IF NOT EXISTS last_staff_message_at DATETIME NULL"
+                )
+            )
         logger.info("Database tables ensured (dev mode; use migrations in production).")
     except Exception as e:
         logger.error(f"init_db failed: {e}")

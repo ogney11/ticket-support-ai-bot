@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
@@ -65,10 +66,42 @@ class MessageHandler(commands.Cog):
             )
             return
 
+        is_staff = self._is_staff(message.author, message.guild)
+
+        if is_staff:
+            async with async_session() as session:
+                await TicketRepository.mark_staff_message(session, ticket.id)
+            return
+
+        # Staff handover: if a staff member has recently written, the bot stays
+        # quiet unless @mentioned or the staff timeout has elapsed.
+        if ticket.bot_paused:
+            resumed = self._bot_mentioned(message)
+            if not resumed and ticket.last_staff_message_at:
+                elapsed = datetime.utcnow() - ticket.last_staff_message_at
+                if elapsed >= timedelta(minutes=Config.STAFF_TIMEOUT_MINUTES):
+                    resumed = True
+            if resumed:
+                async with async_session() as session:
+                    await TicketRepository.resume_bot(session, ticket.id)
+            else:
+                return
+
         if GREETING_RE.match(content):
             return
 
         await self._handle_support(ticket, message)
+
+    def _is_staff(self, author, guild) -> bool:
+        if not guild:
+            return False
+        if Config.SUPPORT_ROLE_ID == 0:
+            return False
+        role = guild.get_role(Config.SUPPORT_ROLE_ID)
+        return role is not None and role in author.roles
+
+    def _bot_mentioned(self, message) -> bool:
+        return self.bot.user is not None and self.bot.user in message.mentions
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):

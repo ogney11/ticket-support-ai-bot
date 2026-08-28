@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import Ticket
+from datetime import datetime
 
 
 class TicketRepository:
@@ -13,6 +14,23 @@ class TicketRepository:
         stmt = select(Ticket).where(Ticket.channel_id == channel_id)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def mark_staff_message(session: AsyncSession, ticket_id: int):
+        ticket = await session.get(Ticket, ticket_id)
+        if ticket:
+            ticket.bot_paused = True
+            ticket.last_staff_message_at = datetime.utcnow()
+            await session.commit()
+        return ticket
+
+    @staticmethod
+    async def resume_bot(session: AsyncSession, ticket_id: int):
+        ticket = await session.get(Ticket, ticket_id)
+        if ticket:
+            ticket.bot_paused = False
+            await session.commit()
+        return ticket
 
     @staticmethod
     async def create(

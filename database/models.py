@@ -24,6 +24,8 @@ class Ticket(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     closed_at = Column(DateTime, nullable=True)
     is_open = Column(Boolean, default=True)
+    bot_paused = Column(Boolean, default=False, nullable=False)
+    last_staff_message_at = Column(DateTime, nullable=True)
 
 
 class TicketMessage(Base):
