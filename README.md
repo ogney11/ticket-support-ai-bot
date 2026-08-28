@@ -19,7 +19,7 @@ bot/
 ├── main.py                      # entry point
 ├── config.py                    # env loading + validation
 ├── database/                    # SQLAlchemy async models, connection, repositories
-├── discord/                     # ticket detector, message handler, knowledge listener, staff commands
+├── support/                     # ticket detector, message handler, knowledge listener, staff commands
 ├── ai/                          # Groq client, prompts, context builder
 ├── knowledge/                   # retrieval from DB + indexed discord messages
 ├── tickets/                     # per-ticket in-memory cache

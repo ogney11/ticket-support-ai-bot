@@ -5,9 +5,9 @@ from discord.ext import commands
 
 from config import Config
 from database.connection import close_db, init_db
-from discord.knowledge_commands import KnowledgeCommands
-from discord.knowledge_listener import KnowledgeListener
-from discord.message_handler import MessageHandler
+from support.knowledge_commands import KnowledgeCommands
+from support.knowledge_listener import KnowledgeListener
+from support.message_handler import MessageHandler
 from utils.logging import logger, setup_logging
 
 setup_logging(level=Config.LOG_LEVEL)
