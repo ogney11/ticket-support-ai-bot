@@ -3,8 +3,10 @@ from database.models import Base
 from config import Config
 from utils.logging import logger
 
+from urllib.parse import quote_plus
+
 DATABASE_URL = (
-    f"mysql+asyncmy://{Config.MYSQL_USER}:{Config.MYSQL_PASSWORD}"
+    f"mysql+asyncmy://{Config.MYSQL_USER}:{quote_plus(Config.MYSQL_PASSWORD)}"
     f"@{Config.MYSQL_HOST}:{Config.MYSQL_PORT}/{Config.MYSQL_DATABASE}"
     f"?charset=utf8mb4"
 )
@@ -14,7 +16,7 @@ engine = create_async_engine(
     echo=False,
     pool_size=10,
     max_overflow=20,
-    pool_pre_ping=True,
+    pool_pre_ping=False,
     pool_recycle=3600,
 )
 
