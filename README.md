@@ -52,7 +52,7 @@ Key settings:
 | --- | --- |
 | `DISCORD_TOKEN` | Your bot token |
 | `GROQ_API_KEY` | Your Groq API key |
-| `GROQ_MODEL` | Groq model (default `openai/gpt-oss-20b`) |
+| `GROQ_MODEL` | Groq model (default `qwen/qwen3.8-27b`) |
 | `GROQ_MODEL_FALLBACKS` | Comma-separated fallback models tried in turn if the primary is unavailable/decommissioned |
 | `MYSQL_*` | MySQL connection details |
 | `SUPPORT_ROLE_ID` | Role ID pinged when escalating |
