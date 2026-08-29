@@ -83,6 +83,13 @@ class Config:
     # this many minutes without a staff message.
     STAFF_TIMEOUT_MINUTES = int(os.getenv("STAFF_TIMEOUT_MINUTES", "30"))
 
+    # Anti-spam: max user messages per window seconds, and max messages per
+    # ticket per window. Raise these to make the bot's "slow down" warning
+    # less aggressive.
+    RATE_LIMIT_PER_USER = int(os.getenv("RATE_LIMIT_PER_USER", "10"))
+    RATE_LIMIT_PER_TICKET = int(os.getenv("RATE_LIMIT_PER_TICKET", "25"))
+    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
+
     # Knowledge backfill on startup: scan existing channel history to build the
     # knowledge base. Set false to only index new messages going forward.
     KNOWLEDGE_BACKFILL = os.getenv("KNOWLEDGE_BACKFILL", "true").lower() in (

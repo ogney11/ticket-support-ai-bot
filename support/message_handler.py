@@ -77,7 +77,11 @@ class MessageHandler(commands.Cog):
         self.groq = GroqClient()
         self.retriever = KnowledgeRetriever()
         self.escalation_manager = EscalationManager()
-        self.rate_limiter = RateLimiter()
+        self.rate_limiter = RateLimiter(
+            per_user=Config.RATE_LIMIT_PER_USER,
+            per_ticket=Config.RATE_LIMIT_PER_TICKET,
+            window=Config.RATE_LIMIT_WINDOW,
+        )
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
