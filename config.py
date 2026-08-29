@@ -86,9 +86,9 @@ class Config:
     # Anti-spam: max user messages per window seconds, and max messages per
     # ticket per window. Raise these to make the bot's "slow down" warning
     # less aggressive.
-    RATE_LIMIT_PER_USER = int(os.getenv("RATE_LIMIT_PER_USER", "10"))
+    RATE_LIMIT_PER_USER = int(os.getenv("RATE_LIMIT_PER_USER", "20"))
     RATE_LIMIT_PER_TICKET = int(os.getenv("RATE_LIMIT_PER_TICKET", "25"))
-    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
+    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "10"))
 
     # Knowledge backfill on startup: scan existing channel history to build the
     # knowledge base. Set false to only index new messages going forward.
